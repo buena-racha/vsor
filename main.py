@@ -10,6 +10,7 @@ from gi.repository import Gtk
 from gi.repository import GLib
 from gi.repository import Gio
 
+BOTONES_ROTACION_EN_BARRA_TITULO = False
 FACTOR_ZOOM_MAS = 1.1
 FACTOR_ZOOM_MENOS = .9
 ajustar = True
@@ -24,7 +25,6 @@ def limpiar():
 	archivonombre_actual = None
 	pb_actual = None
 	lista_imagenes = None
-	extensiones_validas = ('.jpg', '.jpeg', '.svg', '.png', '.gif')
 	no_imagenes = []
 
 def cargar_imagen(pb, setear=True):
@@ -73,8 +73,17 @@ def espejar(vertical=False):
 def rotar(horario=False):
 	cargar_imagen(pb_actual.rotate_simple(PixbufRotation.CLOCKWISE if horario else PixbufRotation.COUNTERCLOCKWISE))
 
+def hallar_imagenes(directorio):
+	archivos = [ a for a in os.scandir(directorio) if a.is_file() ]
+	# se consideran imágenes los archivos que terminen en una extensión conocida
+	# o no tengan extensión
+	return [ a.name for a in archivos if not a.name in no_imagenes and any(
+		[ a.name.endswith(ext) or not '.' in a.name for ext in extensiones_validas ]
+		)
+	]
+
 builder = Gtk.Builder()
-builder.add_from_file('b.ui.glade')
+builder.add_from_file('ui.glade')
 
 def mbtnAbrirCon_clicked(sender):
 	archivo = Gio.File.new_for_path(archivonombre_actual)
@@ -107,26 +116,36 @@ def mbtnRecargar_clicked(sender):
 	cargar_imagen_archivo(archivonombre_actual)
 
 def btnAnterior_clicked(sender):
-	pass
+	if pb_actual and archivonombre_actual:
+		directorio = os.path.dirname(archivonombre_actual)
+		lista_imagenes = hallar_imagenes(directorio)
+		cant = len(lista_imagenes)
+		try:
+			indice = lista_imagenes.index(os.path.basename(archivonombre_actual))
+		except ValueError as ex:
+			print(os.path.basename(archivonombre_actual))
+			print('No se encontró la imagen actual; ¿se borró?')
+			print(ex)
+			if cant > 0:
+				indice = 1
+			else:
+				return
+		
+		if indice == 0: # primer imagen; ir a la última
+			indice = -1
+		else:
+			indice -= 1
+
+		# print(f'Índice: {indice}')
+		if not cargar_imagen_archivo(os.path.join(directorio, lista_imagenes[indice]), mostrar_error=False):
+			no_imagenes.append(lista_imagenes[indice])
+			btnSiguiente_clicked(None)
 
 def btnSiguiente_clicked(sender):
 	if pb_actual and archivonombre_actual:
 		directorio = os.path.dirname(archivonombre_actual)
-		archivos = [ a for a in os.scandir(directorio) if a.is_file() ]
-		# se consideran imágenes los archivos que terminen en una extensión conocida
-		# o no tengan extensión XXX muy lento
-		# lista_imagenes = [ a.name for a in archivos if any([ a.name.endswith(ext) or not '.' in a.name for ext in extensiones_validas ]) ]
-		# print(lista_imagenes)
-		# lista_imagenes = sorted([ a for a in lista_imagenes if '.' in a or subprocess.run(
-		# 	f'file -ib {os.path.join(directorio, a)} | grep "image/" 2>/dev/null 1>&2', shell=True).returncode == 0
-		# 	])
-		# print(lista_imagenes)
-		lista_imagenes = [ a.name for a in archivos if not a.name in no_imagenes and any(
-			[ a.name.endswith(ext) or not '.' in a.name for ext in extensiones_validas ]
-			)
-		]
+		lista_imagenes = hallar_imagenes(directorio)
 		cant = len(lista_imagenes)
-
 		try:
 			indice = lista_imagenes.index(os.path.basename(archivonombre_actual))
 		except ValueError as ex:
@@ -143,7 +162,7 @@ def btnSiguiente_clicked(sender):
 		else:
 			indice += 1
 
-		print(f'Índice: {indice}')
+		# print(f'Índice: {indice}')
 		if not cargar_imagen_archivo(os.path.join(directorio, lista_imagenes[indice]), mostrar_error=False):
 			no_imagenes.append(lista_imagenes[indice])
 			btnSiguiente_clicked(None)
@@ -217,9 +236,17 @@ mbtnEspV.connect('clicked', lambda s: espejar(vertical=True))
 
 btnRotarAntiHorario = builder.get_object('btnRotarAntiHorario')
 btnRotarAntiHorario.connect('clicked', lambda s: rotar(horario=False))
+btnRotarAntiHorario.set_visible(BOTONES_ROTACION_EN_BARRA_TITULO)
 
 btnRotarHorario = builder.get_object('btnRotarHorario')
 btnRotarHorario.connect('clicked', lambda s: rotar(horario=True))
+btnRotarHorario.set_visible(BOTONES_ROTACION_EN_BARRA_TITULO)
+
+btnRotarAntiHorarioMenu = builder.get_object('btnRotarAntiHorarioMenu')
+btnRotarAntiHorarioMenu.connect('clicked', lambda s: rotar(horario=False))
+
+btnRotarHorarioMenu = builder.get_object('btnRotarHorarioMenu')
+btnRotarHorarioMenu.connect('clicked', lambda s: rotar(horario=True))
 
 mbtnAbrirCon = builder.get_object('mbtnAbrirCon')
 mbtnAbrirCon.connect('clicked', mbtnAbrirCon_clicked)
@@ -246,11 +273,10 @@ tbtnAjustar.connect('clicked', tbtnAjustar_clicked)
 mbtnPropiedades = builder.get_object('mbtnPropiedades')
 mbtnPropiedades.connect('clicked', mbtnPropiedades_clicked)
 
-#imgMain.set_from_file('/home/thiago/Imágenes/lolibooru.moe/3d31cc54c749ad0c8a8228e13ae1fb23')
 #imgMain.set_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae') # gif
 #imgMain.set_from_animation(PixbufAnimation.new_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae')) # gif
 
-if len(sys.argv) > 0:
+if len(sys.argv) > 1:
 	cargar_imagen_archivo(sys.argv[1])
 
 # ventana
