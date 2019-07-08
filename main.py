@@ -53,8 +53,21 @@ def cargar_imagen_archivo(archivo: str, mostrar_error=True) -> bool:
 			cargar_imagen(PixbufAnimation.new_from_file(archivo))
 		else:
 			cargar_imagen(Pixbuf.new_from_file(archivo))
+
 		archivonombre_actual = archivo
-		hb.set_subtitle(os.path.basename(archivonombre_actual))
+
+		indice_actual = 0
+		directorio = os.path.dirname(archivonombre_actual)
+		lista_imagenes = hallar_imagenes(directorio)
+		cant = len(lista_imagenes)
+		try:
+			indice_actual = lista_imagenes.index(os.path.basename(archivonombre_actual))
+		except ValueError as ex:
+			print(os.path.basename(archivonombre_actual))
+			print('No se encontró la imagen actual al actualizar el subtítulo; ¿se borró?')
+			print(ex)
+
+		hb.set_subtitle('(%s/%s) %s' % (indice_actual, cant, os.path.basename(archivonombre_actual)))
 		tbtnAjustar.set_sensitive(True)
 		tbtnAjustar.set_active(ajustar)
 		tbtnAjustarMenu.set_active(ajustar)
