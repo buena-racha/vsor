@@ -9,6 +9,7 @@ from gi.repository.GdkPixbuf import Pixbuf, PixbufAnimation, PixbufRotation, Int
 from gi.repository import Gtk
 from gi.repository import GLib
 from gi.repository import Gio
+from gi.repository import Gdk
 
 BOTONES_ROTACION_EN_BARRA_TITULO = False
 FACTOR_ZOOM_MAS = 1.1
@@ -53,7 +54,16 @@ def cargar_imagen_archivo(archivo: str, mostrar_error=True) -> bool:
 		else:
 			cargar_imagen(Pixbuf.new_from_file(archivo))
 		archivonombre_actual = archivo
-		hb.set_subtitle(archivonombre_actual)
+		hb.set_subtitle(os.path.basename(archivonombre_actual))
+		tbtnAjustar.set_sensitive(True)
+		tbtnAjustar.set_active(ajustar)
+		tbtnAjustarMenu.set_active(ajustar)
+		btnAchicar.set_sensitive(True)
+		btnAgrandar.set_sensitive(True)
+		btnRotarAntiHorario.set_sensitive(True)
+		btnRotarHorario.set_sensitive(True)
+		btnSiguiente.set_sensitive(True)
+		btnAnterior.set_sensitive(True)
 		return True
 	except Exception as e:
 		if mostrar_error:
@@ -78,12 +88,12 @@ def hallar_imagenes(directorio):
 	# se consideran imágenes los archivos que terminen en una extensión conocida
 	# o no tengan extensión
 	return [ a.name for a in archivos if not a.name in no_imagenes and any(
-		[ a.name.endswith(ext) or not '.' in a.name for ext in extensiones_validas ]
+		[ a.name.upper().endswith(ext.upper()) or not '.' in a.name for ext in extensiones_validas ]
 		)
 	]
 
 builder = Gtk.Builder()
-builder.add_from_file('ui.glade')
+builder.add_from_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui.glade'))
 
 def mbtnAbrirCon_clicked(sender):
 	archivo = Gio.File.new_for_path(archivonombre_actual)
@@ -138,6 +148,7 @@ def btnAnterior_clicked(sender):
 
 		# print(f'Índice: {indice}')
 		if not cargar_imagen_archivo(os.path.join(directorio, lista_imagenes[indice]), mostrar_error=False):
+			print(f'{lista_imagenes[indice]} no parece ser una imagen; ignorando...')
 			no_imagenes.append(lista_imagenes[indice])
 			btnSiguiente_clicked(None)
 
@@ -184,16 +195,21 @@ def btnAgrandar_clicked(sender):
 	if pb_actual and type(pb_actual) is Pixbuf:
 		ajustar = False
 		imgMain.set_from_pixbuf(pb_actual.scale_simple(imgMain.get_pixbuf().get_width()*FACTOR_ZOOM_MAS, imgMain.get_pixbuf().get_height()*FACTOR_ZOOM_MAS, InterpType.BILINEAR))
+		tbtnAjustar.set_active(ajustar)
 
 def btnAchicar_clicked(sender):
 	global ajustar
 	if pb_actual and type(pb_actual) is Pixbuf:
 		ajustar = False
 		imgMain.set_from_pixbuf(pb_actual.scale_simple(imgMain.get_pixbuf().get_width()*FACTOR_ZOOM_MENOS, imgMain.get_pixbuf().get_height()*FACTOR_ZOOM_MENOS, InterpType.BILINEAR))
+		tbtnAjustar.set_active(ajustar)
 
 def tbtnAjustar_clicked(sender):
 	global ajustar
 	ajustar = sender.get_active()
+	tbtnAjustar.set_active(ajustar)
+	tbtnAjustarMenu.set_active(ajustar)
+	window_resize(None)
 	print(f'ajustar: {ajustar}')
 
 def mbtnPropiedades_clicked(sender):
@@ -215,9 +231,41 @@ def window_resize(s):
 # elementos
 boxMain = builder.get_object('boxMain')
 hb = builder.get_object('hb')
-imgMain = builder.get_object('imgMain')
 popmOpciones = builder.get_object('popmOpciones')
 mbtnTransformaciones = builder.get_object('mbtnTransformaciones')
+
+imgMain = builder.get_object('imgMain')
+vpImagen = builder.get_object('vpImagen')
+evboxImagen = builder.get_object('evboxImagen')
+# evboxImagen.connect('realize', lambda s: evboxImagen.get_window().set_cursor(Gdk.Cursor.new_from_name(Gdk.Display.get_default(), 'grab')))
+swImagen = builder.get_object('swImagen')
+# evboxImagen.set_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON1_MOTION_MASK) ¿innecesario?
+last_y = last_x = 0
+def button_release_event(s, ev):
+	global last_y, last_x
+	last_y = last_x = 0
+	evboxImagen.get_window().set_cursor(Gdk.Cursor.new_from_name(Gdk.Display.get_default(), 'default'))
+
+def button_press_event(s, ev):
+	if ev.button == 1:
+		evboxImagen.get_window().set_cursor(Gdk.Cursor.new_from_name(Gdk.Display.get_default(), 'grabbing'))
+
+def motion_notify_event(s, ev):
+	global last_y, last_x
+	if last_y != 0:
+		adj = swImagen.get_vadjustment()
+		adj.set_value(adj.get_value() + (ev.y - last_y) * .5)
+		swImagen.set_vadjustment(adj)
+	if last_x != 0:
+		adj = swImagen.get_hadjustment()
+		adj.set_value(adj.get_value() + (ev.x - last_x) * .5)
+		swImagen.set_hadjustment(adj)
+	last_x = ev.x
+	last_y = ev.y
+	# print(f'{ev.x}\t{ev.y}')
+evboxImagen.connect("button-press-event", button_press_event)
+evboxImagen.connect("button-release-event", button_release_event)
+evboxImagen.connect("motion-notify-event", motion_notify_event)
 
 btnAbrir = builder.get_object('btnAbrir')
 btnAbrir.connect('clicked', btnAbrir_clicked)
@@ -270,19 +318,31 @@ btnAchicar.connect('clicked', btnAchicar_clicked)
 tbtnAjustar = builder.get_object('tbtnAjustar')
 tbtnAjustar.connect('clicked', tbtnAjustar_clicked)
 
+tbtnAjustarMenu = builder.get_object('tbtnAjustarMenu')
+tbtnAjustarMenu.connect('clicked', tbtnAjustar_clicked)
+
 mbtnPropiedades = builder.get_object('mbtnPropiedades')
 mbtnPropiedades.connect('clicked', mbtnPropiedades_clicked)
 
 #imgMain.set_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae') # gif
 #imgMain.set_from_animation(PixbufAnimation.new_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae')) # gif
 
-if len(sys.argv) > 1:
-	cargar_imagen_archivo(sys.argv[1])
-
 # ventana
 win = builder.get_object('winMain')
+def foo2(s, ev):
+	if ev.keyval == Gdk.KEY_KP_Add or ev.keyval == Gdk.KEY_plus:
+		btnAgrandar_clicked(None)
+	elif ev.keyval == Gdk.KEY_KP_Subtract or ev.keyval == Gdk.KEY_minus:
+		btnAchicar_clicked(None)
+	elif ev.keyval == Gdk.KEY_Right:
+		btnSiguiente_clicked(None)
+	elif ev.keyval == Gdk.KEY_Left:
+		btnAnterior_clicked(None)
+
+win.connect('key-press-event', foo2)
 win.set_wmclass('floating', 'floating')
 win.connect('check-resize', window_resize)
+win.connect('show', lambda ev: cargar_imagen_archivo(os.path.abspath(sys.argv[1])) if len(sys.argv) > 1 else None)
 win.connect('destroy', Gtk.main_quit)
 win.show_all()
 Gtk.main()
