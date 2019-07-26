@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Visor de imágenes
+Exec=%s/vsor %%U
+Icon=org.gnome.eog
+Type=Application
+Categories=GNOME;GTK;Graphics;2DGraphics;RasterGraphics;Viewer;Utility;
+MimeType=image/gif;image/jpeg;image/jpg;image/png;

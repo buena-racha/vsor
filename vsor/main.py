@@ -68,7 +68,7 @@ def main():
 				print('No se encontró la imagen actual al actualizar el subtítulo; ¿se borró?')
 				print(ex)
 
-			hb.set_subtitle('(%s/%s) %s' % (indice_actual, cant, os.path.basename(archivonombre_actual)))
+			hb.set_subtitle('(%s/%s) %s' % (indice_actual + 1, cant, os.path.basename(archivonombre_actual)))
 			tbtnAjustar.set_sensitive(True)
 			tbtnAjustar.set_active(ajustar)
 			tbtnAjustarMenu.set_active(ajustar)
@@ -101,10 +101,9 @@ def main():
 		archivos = [ a for a in os.scandir(directorio) if a.is_file() ]
 		# se consideran imágenes los archivos que terminen en una extensión conocida
 		# o no tengan extensión
-		return [ a.name for a in archivos if not a.name in no_imagenes and any(
+		return sorted([ a.name for a in archivos if not a.name in no_imagenes and any(
 			[ a.name.upper().endswith(ext.upper()) or not '.' in a.name for ext in extensiones_validas ]
-			)
-		]
+		)])
 
 	builder = Gtk.Builder()
 	builder.add_from_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui.glade'))
@@ -249,9 +248,7 @@ def main():
 	mbtnTransformaciones = builder.get_object('mbtnTransformaciones')
 
 	imgMain = builder.get_object('imgMain')
-	vpImagen = builder.get_object('vpImagen')
 	evboxImagen = builder.get_object('evboxImagen')
-	# evboxImagen.connect('realize', lambda s: evboxImagen.get_window().set_cursor(Gdk.Cursor.new_from_name(Gdk.Display.get_default(), 'grab')))
 	swImagen = builder.get_object('swImagen')
 	# evboxImagen.set_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON1_MOTION_MASK) ¿innecesario?
 	last_y = last_x = 0
@@ -263,6 +260,10 @@ def main():
 	def button_press_event(s, ev):
 		if ev.button == 1:
 			evboxImagen.get_window().set_cursor(Gdk.Cursor.new_from_name(Gdk.Display.get_default(), 'grabbing'))
+		elif ev.button == 9:
+			btnSiguiente_clicked(None)
+		elif ev.button == 8:
+			btnAnterior_clicked(None)
 
 	def motion_notify_event(s, ev):
 		global last_y, last_x
@@ -276,7 +277,7 @@ def main():
 			swImagen.set_hadjustment(adj)
 		last_x = ev.x
 		last_y = ev.y
-		# print(f'{ev.x}\t{ev.y}')
+
 	evboxImagen.connect("button-press-event", button_press_event)
 	evboxImagen.connect("button-release-event", button_release_event)
 	evboxImagen.connect("motion-notify-event", motion_notify_event)
@@ -338,12 +339,9 @@ def main():
 	mbtnPropiedades = builder.get_object('mbtnPropiedades')
 	mbtnPropiedades.connect('clicked', mbtnPropiedades_clicked)
 
-	#imgMain.set_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae') # gif
-	#imgMain.set_from_animation(PixbufAnimation.new_from_file('/home/thiago/Imágenes/lolibooru.moe/d29440180ec883bca2b4f1e07ca143ae')) # gif
-
 	# ventana
 	win = builder.get_object('winMain')
-	def foo2(s, ev):
+	def winMain_key_press_event(s, ev):
 		if ev.keyval == Gdk.KEY_KP_Add or ev.keyval == Gdk.KEY_plus:
 			btnAgrandar_clicked(None)
 		elif ev.keyval == Gdk.KEY_KP_Subtract or ev.keyval == Gdk.KEY_minus:
@@ -353,7 +351,7 @@ def main():
 		elif ev.keyval == Gdk.KEY_Left:
 			btnAnterior_clicked(None)
 
-	win.connect('key-press-event', foo2)
+	win.connect('key-press-event', winMain_key_press_event)
 	win.set_wmclass('floating', 'floating')
 	win.connect('check-resize', window_resize)
 	win.connect('show', lambda ev: cargar_imagen_archivo(os.path.abspath(sys.argv[1])) if len(sys.argv) > 1 else None)
@@ -361,5 +359,5 @@ def main():
 	win.show_all()
 	Gtk.main()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	main()
