@@ -438,6 +438,12 @@ def main():
 			btnSiguiente_clicked(None)
 		elif ev.keyval == Gdk.KEY_Left:
 			btnAnterior_clicked(None)
+		elif ev.keyval == Gdk.KEY_f and ev.state & Gdk.ModifierType.MOD1_MASK:
+			win.set_decorated(not win.get_decorated())
+		elif ev.keyval == Gdk.KEY_v and ev.state & Gdk.ModifierType.MOD1_MASK:
+			pb = imgMain.get_pixbuf()
+			win.resize(pb.get_width(), pb.get_height())
+
 
 	win.connect('key-press-event', winMain_key_press_event)
 	win.set_wmclass('floating', 'floating')
