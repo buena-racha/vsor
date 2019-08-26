@@ -11,7 +11,9 @@ from gi.repository import GLib
 from gi.repository import Gio
 from gi.repository import Gdk
 
-BOTONES_ROTACION_EN_BARRA_TITULO = False
+MANTENER_DESPLAZAMIENTO_VERTICAL = False # conservar desplazamiento vertical al cambiar de imagen
+MANTENER_DESPLAZAMIENTO_HORIZONTAL = True # conservar desplazamiento horizontal al cambiar de imagen
+BOTONES_ROTACION_EN_BARRA_TITULO = False # mostrar botones de rotación en la barra de título
 FACTOR_ZOOM_MAS = 1.1
 FACTOR_ZOOM_MENOS = .9
 ajustar = True
@@ -78,6 +80,17 @@ def main():
 			btnRotarHorario.set_sensitive(True)
 			btnSiguiente.set_sensitive(True)
 			btnAnterior.set_sensitive(True)
+
+			if not MANTENER_DESPLAZAMIENTO_VERTICAL:
+				adj = swImagen.get_vadjustment()
+				adj.set_value(0)
+				swImagen.set_vadjustment(adj)
+			
+			if not MANTENER_DESPLAZAMIENTO_HORIZONTAL:
+				adj = swImagen.get_hadjustment()
+				adj.set_value(0)
+				swImagen.set_hadjustment(adj)
+			
 			return True
 		except Exception as e:
 			if mostrar_error:
@@ -223,7 +236,6 @@ def main():
 		tbtnAjustar.set_active(ajustar)
 		tbtnAjustarMenu.set_active(ajustar)
 		window_resize(None)
-		print(f'ajustar: {ajustar}')
 
 	def mbtnPropiedades_clicked(sender):
 		win_propiedades = builder.get_object('winPropiedades')
