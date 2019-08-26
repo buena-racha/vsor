@@ -3,6 +3,7 @@ import os
 import sys
 import gi
 import subprocess
+from xattr import xattr, setxattr
 gi.require_version('Gtk', '3.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository.GdkPixbuf import Pixbuf, PixbufAnimation, PixbufRotation, InterpType
@@ -25,6 +26,47 @@ extensiones_validas = ('.jpg', '.jpeg', '.svg', '.png', '.gif')
 no_imagenes = [] # archivos que definitivamente no son imágenes (fallaron al cargar)
 
 def main():
+	def obtener_etiquetas(archivonombre):
+		xattr_archivo = dict(xattr(archivonombre))
+		try:
+			return [ x for x in xattr_archivo['user.tags'].decode().split(',') if x ]
+		except KeyError:
+			return list()
+		
+	def guardar_etiquetas():
+		etiquetas = []
+		lbEtiquetas = builder.get_object('lbEtiquetas')
+		for row in lbEtiquetas.get_children():
+			lbl, _ = row.get_child().get_children()
+			etiquetas.append(lbl.get_text())
+		setxattr(archivonombre_actual, 'user.tags', ','.join(etiquetas).encode())
+	
+	def limpiar_etiquetas_en_listbox():
+		lbEtiquetas = builder.get_object('lbEtiquetas')
+		for c in lbEtiquetas.get_children():
+			lbEtiquetas.remove(c)
+
+	def agregar_etiqueta_en_listbox(etiqueta):
+		lbEtiquetas = builder.get_object('lbEtiquetas')
+
+		lbr = Gtk.ListBoxRow.new()
+		box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, valign=Gtk.Align.START)
+		box.pack_start(Gtk.Label.new(etiqueta), True, True, 5)
+		btn = Gtk.Button.new()
+		btn.set_relief(Gtk.ReliefStyle.NONE)
+
+		def btn_clicked(sender):
+			lbEtiquetas.remove(sender.get_parent().get_parent())
+			guardar_etiquetas()
+
+		btn.connect('clicked', btn_clicked)
+		imgQuitar = Gtk.Image.new_from_icon_name('gtk-remove', Gtk.IconSize.BUTTON)
+		btn.set_image(imgQuitar)
+		box.pack_start(btn, False, False, 0)
+		lbr.add(box)
+		lbEtiquetas.add(lbr)
+		lbEtiquetas.show_all()
+
 	def limpiar():
 		archivonombre_actual = None
 		pb_actual = None
@@ -51,7 +93,6 @@ def main():
 	def cargar_imagen_archivo(archivo: str, mostrar_error=True) -> bool:
 		global archivonombre_actual
 		try:
-			# import pdb; pdb.set_trace()
 			if 'image/gif' in Pixbuf.get_file_info(archivo)[0].get_mime_types():
 				cargar_imagen(PixbufAnimation.new_from_file(archivo))
 			else:
@@ -72,6 +113,7 @@ def main():
 
 			hb.set_subtitle('(%s/%s) %s' % (indice_actual + 1, cant, os.path.basename(archivonombre_actual)))
 			tbtnAjustar.set_sensitive(True)
+			mbEtiquetas.set_popover(popmEtiquetas)
 			tbtnAjustar.set_active(ajustar)
 			tbtnAjustarMenu.set_active(ajustar)
 			btnAchicar.set_sensitive(True)
@@ -80,6 +122,21 @@ def main():
 			btnRotarHorario.set_sensitive(True)
 			btnSiguiente.set_sensitive(True)
 			btnAnterior.set_sensitive(True)
+
+			# cargar etiquetas
+			lbEtiquetas = builder.get_object('lbEtiquetas')
+			lbl = Gtk.Label.new()
+			lbl.set_text('Sin etiquetas')
+			lbl.show()
+			lbEtiquetas.set_placeholder(lbl)
+			lbEtiquetas.show_all()
+
+			etiquetas_archivo = obtener_etiquetas(archivonombre_actual)
+
+			limpiar_etiquetas_en_listbox()
+
+			for e in etiquetas_archivo:
+				agregar_etiqueta_en_listbox(e)
 
 			if not MANTENER_DESPLAZAMIENTO_VERTICAL:
 				adj = swImagen.get_vadjustment()
@@ -246,6 +303,17 @@ def main():
 		# win_propiedades.set_transient_for(win)
 		win_propiedades.show()
 
+	def entEtiqueta_activate(sender):
+		btnAgregarEtiqueta_clicked(None)
+
+	def btnAgregarEtiqueta_clicked(sender):
+		for e in entEtiqueta.get_text().split(','):
+			e = e.strip()
+			if e: agregar_etiqueta_en_listbox(e)
+
+		entEtiqueta.set_text('')
+		guardar_etiquetas()
+
 	def window_resize(s):
 		if ajustar and pb_actual and type(pb_actual) is Pixbuf:
 			tamano_box = boxMain.get_allocation()
@@ -258,6 +326,8 @@ def main():
 	hb = builder.get_object('hb')
 	popmOpciones = builder.get_object('popmOpciones')
 	mbtnTransformaciones = builder.get_object('mbtnTransformaciones')
+	mbEtiquetas = builder.get_object('mbEtiquetas')
+	popmEtiquetas = builder.get_object('popmEtiquetas')
 
 	imgMain = builder.get_object('imgMain')
 	evboxImagen = builder.get_object('evboxImagen')
@@ -350,6 +420,12 @@ def main():
 
 	mbtnPropiedades = builder.get_object('mbtnPropiedades')
 	mbtnPropiedades.connect('clicked', mbtnPropiedades_clicked)
+
+	btnAgregarEtiqueta = builder.get_object('btnAgregarEtiqueta')
+	btnAgregarEtiqueta.connect('clicked', btnAgregarEtiqueta_clicked)
+
+	entEtiqueta = builder.get_object('entEtiqueta')
+	entEtiqueta.connect('activate', entEtiqueta_activate)
 
 	# ventana
 	win = builder.get_object('winMain')
