@@ -41,9 +41,8 @@ class PostInstalacion(install):
 		install.run(self)
 setup(
 	name='vsor',
-	version='0.5',
+	version='0.6',
 	packages=find_packages(),
-	# scripts=['rin.py'],
 	cmdclass={
 		'install': PostInstalacion,
 	},
