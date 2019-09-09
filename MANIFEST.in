@@ -1,1 +1,2 @@
 include vsor/ui.glade
+include vsor/estilos.css

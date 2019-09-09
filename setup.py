@@ -41,7 +41,7 @@ class PostInstalacion(install):
 		install.run(self)
 setup(
 	name='vsor',
-	version='0.6',
+	version='0.7',
 	packages=find_packages(),
 	cmdclass={
 		'install': PostInstalacion,

@@ -80,7 +80,7 @@ class Aplicacion:
 
 		# estilos
 		cssProvider = Gtk.CssProvider.new()
-		cssProvider.load_from_path('estilos.css')
+		cssProvider.load_from_path(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'estilos.css'))
 		Gtk.StyleContext.add_provider_for_screen(
 			Gdk.Screen.get_default(),
 			cssProvider,
@@ -635,5 +635,8 @@ class Aplicacion:
 		self.ultima_pos_x = ev.x
 		self.ultima_pos_y = ev.y
 
-if __name__ == '__main__':
+def main():
 	app = Aplicacion(os.path.abspath(sys.argv[1])) if len(sys.argv) > 1 else Aplicacion()
+
+if __name__ == '__main__':
+	main()
