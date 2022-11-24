@@ -6,13 +6,12 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 
 DESKTOP_ARCH = 'vsor.desktop'
-APPLICATIONS_SISTEMA = '/usr/share/applications/'
-APPLICATIONS_USUARIO = os.path.join(os.environ['HOME'], '.local/share/applications/')
+APPLICATIONS_SYSTEM = '/usr/share/applications/'
+APPLICATIONS_USER = os.path.join(os.environ['HOME'], '.local/share/applications/')
 
 class PostInstalacion(install):
-	"""Post-instalación."""
 	def run(self):
-		carpeta = APPLICATIONS_USUARIO if self.user else APPLICATIONS_SISTEMA
+		carpeta = APPLICATIONS_USER if self.user else APPLICATIONS_SYSTEM
 		try:
 			print('os.makedirs(%s)...' % carpeta, end='')
 			os.makedirs(carpeta)
